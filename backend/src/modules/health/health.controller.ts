@@ -1,46 +1,41 @@
-﻿import type { Request, Response } from "express";
+﻿
+import type { Request, Response, NextFunction } from "express";
+import { ApiError } from "../../lib/http/api-error.js";
+import { sendSuccess } from "../../lib/http/api-response.js";
 import { prisma } from "../../lib/prisma.js";
 
 export function getHealth(_req: Request, res: Response): void {
-  res.status(200).json({
-    data: {
-      status: "ok",
-      service: "opspulse-api",
-      timestamp: new Date().toISOString(),
-      uptimeSeconds: Math.floor(process.uptime()),
-    },
+  sendSuccess(res, {
+    status: "ok",
+    service: "opspulse-api",
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
   });
 }
 
 export async function getReadiness(
   _req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> {
   try {
     await prisma.$queryRaw`SELECT 1`;
 
-    res.status(200).json({
-      data: {
-        status: "ready",
-        service: "opspulse-api",
-        checks: {
-          database: "connected",
-        },
-        timestamp: new Date().toISOString(),
+    sendSuccess(res, {
+      status: "ready",
+      service: "opspulse-api",
+      checks: {
+        database: "connected",
       },
+      timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error("Database readiness check failed:", error);
-
-    res.status(503).json({
-      data: {
-        status: "not_ready",
-        service: "opspulse-api",
-        checks: {
-          database: "disconnected",
-        },
-        timestamp: new Date().toISOString(),
-      },
-    });
+  } catch {
+    next(
+      new ApiError(
+        503,
+        "SERVICE_NOT_READY",
+        "The service is temporarily unavailable.",
+      ),
+    );
   }
 }
