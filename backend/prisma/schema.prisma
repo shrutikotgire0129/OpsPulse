@@ -92,8 +92,8 @@ model Organization {
   products   Product[]
   customers  Customer[]
 
-  orders    Order[]
-  payments  Payment[]
+  orders   Order[]
+  payments Payment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -120,9 +120,9 @@ model Membership {
 }
 
 model Session {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  tokenHash String   @unique
+  tokenHash String    @unique
   expiresAt DateTime
   revokedAt DateTime?
 
@@ -199,9 +199,9 @@ model Product {
   sku     String? @db.VarChar(100)
   barcode String? @db.VarChar(100)
 
-  price        Decimal @db.Decimal(19, 4)
+  price        Decimal  @db.Decimal(19, 4)
   cost         Decimal? @db.Decimal(19, 4)
-  currencyCode String  @default("USD") @db.Char(3)
+  currencyCode String   @default("USD") @db.Char(3)
 
   status ProductStatus @default(DRAFT)
 
@@ -273,12 +273,12 @@ model Address {
   recipientName String?
   phone         String?
 
-  line1      String
-  line2      String?
-  city       String
-  region     String?
-  postalCode String?
-  countryCode String @db.Char(2)
+  line1       String
+  line2       String?
+  city        String
+  region      String?
+  postalCode  String?
+  countryCode String  @db.Char(2)
 
   customer Customer @relation(fields: [customerId, organizationId], references: [id, organizationId], onDelete: Cascade)
 
@@ -315,18 +315,27 @@ enum PaymentStatus {
 enum PaymentMethod {
   CARD
   BANK_TRANSFER
+  UPI
+  NET_BANKING
   CASH
   WALLET
   OTHER
 }
 
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
 
 // --------------------------------------------------
 // ORDER MANAGEMENT
 // --------------------------------------------------
 
 model Order {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   customerId     String?
 
@@ -373,7 +382,7 @@ model Order {
 // --------------------------------------------------
 
 model OrderItem {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   orderId        String
   productId      String?
@@ -387,7 +396,7 @@ model OrderItem {
   // Decimal quantity supports fractional products
   quantity Decimal @db.Decimal(19, 4)
 
-  unitPrice     Decimal @db.Decimal(19, 4)
+  unitPrice      Decimal @db.Decimal(19, 4)
   discountAmount Decimal @default(0) @db.Decimal(19, 4)
   taxAmount      Decimal @default(0) @db.Decimal(19, 4)
   lineTotal      Decimal @db.Decimal(19, 4)
@@ -419,27 +428,89 @@ model Payment {
   provider          String? @db.VarChar(100)
   providerReference String? @db.VarChar(255)
 
-  idempotencyKey String? @db.VarChar(255)
+  idempotencyKey     String? @db.VarChar(255)
+  requestFingerprint String? @db.VarChar(64)
 
   amount         Decimal @db.Decimal(19, 4)
   refundedAmount Decimal @default(0) @db.Decimal(19, 4)
   currencyCode   String  @db.Char(3)
 
-  paidAt   DateTime?
-  failedAt DateTime?
+  paidAt    DateTime?
+  failedAt  DateTime?
+  expiresAt DateTime?
 
   failureReason String? @db.Text
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order        @relation(fields: [orderId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
-  order Order @relation(fields: [orderId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  refunds        PaymentRefund[]
+  providerEvents PaymentProviderEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([id, organizationId])
   @@unique([organizationId, idempotencyKey])
   @@unique([organizationId, provider, providerReference])
   @@index([organizationId, status, createdAt])
   @@index([organizationId, orderId])
   @@index([organizationId, paidAt])
+  @@index([organizationId, expiresAt])
+}
+
+model PaymentRefund {
+  id             String @id @default(cuid())
+  organizationId String
+  paymentId      String
+
+  status RefundStatus @default(PENDING)
+
+  amount Decimal @db.Decimal(19, 4)
+
+  provider          String? @db.VarChar(100)
+  providerReference String? @db.VarChar(255)
+
+  idempotencyKey String @db.VarChar(255)
+  requestFingerprint String? @db.VarChar(64)
+
+  reason        String?   @db.Text
+  failureReason String?   @db.Text
+  processedAt   DateTime?
+
+  payment Payment @relation(fields: [paymentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, idempotencyKey])
+  @@unique([organizationId, provider, providerReference])
+  @@index([organizationId, paymentId, createdAt])
+  @@index([organizationId, status, createdAt])
+}
+
+model PaymentProviderEvent {
+  id             String @id @default(cuid())
+  organizationId String
+  paymentId      String
+
+  provider  String @db.VarChar(100)
+  eventId   String @db.VarChar(255)
+  eventType String @db.VarChar(150)
+
+  payloadHash String @db.VarChar(64)
+
+  signatureVerifiedAt DateTime
+  processedAt         DateTime?
+  processingError     String?   @db.Text
+
+  payment Payment @relation(fields: [paymentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, provider, eventId])
+  @@index([organizationId, paymentId, createdAt])
+  @@index([organizationId, processedAt])
 }
