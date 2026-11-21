@@ -7,6 +7,10 @@ datasource db {
   provider = "postgresql"
 }
 
+// --------------------------------------------------
+// ENUMS
+// --------------------------------------------------
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -33,6 +37,27 @@ enum InvitationStatus {
   EXPIRED
   REVOKED
 }
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CustomerStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum AddressType {
+  BILLING
+  SHIPPING
+  OTHER
+}
+
+// --------------------------------------------------
+// AUTHENTICATION AND ORGANIZATION
+// --------------------------------------------------
 
 model User {
   id           String     @id @default(cuid())
@@ -62,6 +87,13 @@ model Organization {
 
   memberships Membership[]
   invitations Invitation[]
+
+  categories Category[]
+  products   Product[]
+  customers  Customer[]
+
+  orders    Order[]
+  payments  Payment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -124,4 +156,290 @@ model Invitation {
   @@index([email, status])
   @@index([organizationId, status])
   @@index([expiresAt])
+}
+
+// --------------------------------------------------
+// PRODUCT CATALOG
+// --------------------------------------------------
+
+model Category {
+  id             String @id @default(cuid())
+  organizationId String
+
+  name        String
+  slug        String
+  description String? @db.Text
+
+  parentId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  children Category[] @relation("CategoryHierarchy")
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, slug])
+  @@index([organizationId, parentId])
+  @@index([organizationId, name])
+}
+
+model Product {
+  id             String @id @default(cuid())
+  organizationId String
+
+  name        String
+  slug        String
+  description String? @db.Text
+
+  sku     String? @db.VarChar(100)
+  barcode String? @db.VarChar(100)
+
+  price        Decimal @db.Decimal(19, 4)
+  cost         Decimal? @db.Decimal(19, 4)
+  currencyCode String  @default("USD") @db.Char(3)
+
+  status ProductStatus @default(DRAFT)
+
+  categoryId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  category Category? @relation(fields: [categoryId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, slug])
+  @@unique([organizationId, sku])
+  @@unique([organizationId, barcode])
+  @@index([organizationId, status])
+  @@index([organizationId, categoryId])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, name])
+}
+
+// --------------------------------------------------
+// CUSTOMER MANAGEMENT
+// --------------------------------------------------
+
+model Customer {
+  id             String @id @default(cuid())
+  organizationId String
+
+  firstName String
+  lastName  String
+  company   String?
+
+  email String? @db.VarChar(320)
+  phone String? @db.VarChar(30)
+
+  notes  String?        @db.Text
+  status CustomerStatus @default(ACTIVE)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  addresses Address[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, email])
+  @@index([organizationId, status])
+  @@index([organizationId, lastName, firstName])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, phone])
+}
+
+model Address {
+  id             String @id @default(cuid())
+  organizationId String
+  customerId     String
+
+  type      AddressType @default(OTHER)
+  label     String?
+  isDefault Boolean     @default(false)
+
+  recipientName String?
+  phone         String?
+
+  line1      String
+  line2      String?
+  city       String
+  region     String?
+  postalCode String?
+  countryCode String @db.Char(2)
+
+  customer Customer @relation(fields: [customerId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, organizationId])
+  @@index([organizationId, customerId])
+  @@index([customerId, isDefault])
+  @@index([organizationId, countryCode])
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD
+  BANK_TRANSFER
+  CASH
+  WALLET
+  OTHER
+}
+
+
+// --------------------------------------------------
+// ORDER MANAGEMENT
+// --------------------------------------------------
+
+model Order {
+  id             String @id @default(cuid())
+  organizationId String
+  customerId     String?
+
+  orderNumber String
+  status      OrderStatus @default(PENDING)
+
+  currencyCode String @db.Char(3)
+
+  subtotal      Decimal @db.Decimal(19, 4)
+  discountTotal Decimal @default(0) @db.Decimal(19, 4)
+  taxTotal      Decimal @default(0) @db.Decimal(19, 4)
+  shippingTotal Decimal @default(0) @db.Decimal(19, 4)
+  grandTotal    Decimal @db.Decimal(19, 4)
+
+  billingAddress  Json? @db.JsonB
+  shippingAddress Json? @db.JsonB
+
+  channel String? @db.VarChar(100)
+  notes   String? @db.Text
+
+  placedAt    DateTime?
+  fulfilledAt DateTime?
+  cancelledAt DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  customer Customer? @relation(fields: [customerId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  items    OrderItem[]
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, orderNumber])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, customerId])
+  @@index([organizationId, placedAt])
+}
+
+// --------------------------------------------------
+// ORDER ITEMS
+// --------------------------------------------------
+
+model OrderItem {
+  id             String @id @default(cuid())
+  organizationId String
+  orderId        String
+  productId      String?
+
+  lineNumber Int
+
+  // Historical product snapshots
+  productName String
+  sku         String?
+
+  // Decimal quantity supports fractional products
+  quantity Decimal @db.Decimal(19, 4)
+
+  unitPrice     Decimal @db.Decimal(19, 4)
+  discountAmount Decimal @default(0) @db.Decimal(19, 4)
+  taxAmount      Decimal @default(0) @db.Decimal(19, 4)
+  lineTotal      Decimal @db.Decimal(19, 4)
+
+  order Order @relation(fields: [orderId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  product Product? @relation(fields: [productId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, orderId, lineNumber])
+  @@index([organizationId, productId])
+  @@index([organizationId, orderId])
+}
+
+// --------------------------------------------------
+// PAYMENT MANAGEMENT
+// --------------------------------------------------
+
+model Payment {
+  id             String @id @default(cuid())
+  organizationId String
+  orderId        String
+
+  status PaymentStatus @default(PENDING)
+  method PaymentMethod @default(OTHER)
+
+  provider          String? @db.VarChar(100)
+  providerReference String? @db.VarChar(255)
+
+  idempotencyKey String? @db.VarChar(255)
+
+  amount         Decimal @db.Decimal(19, 4)
+  refundedAmount Decimal @default(0) @db.Decimal(19, 4)
+  currencyCode   String  @db.Char(3)
+
+  paidAt   DateTime?
+  failedAt DateTime?
+
+  failureReason String? @db.Text
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  order Order @relation(fields: [orderId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, idempotencyKey])
+  @@unique([organizationId, provider, providerReference])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, orderId])
+  @@index([organizationId, paidAt])
 }
