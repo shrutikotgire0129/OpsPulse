@@ -1,0 +1,18 @@
+{
+  "name": "opspulse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OpsPulse - Real-Time Business Analytics and Operations Platform",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev:frontend": "corepack pnpm --filter @opspulse/frontend dev",
+    "dev:backend": "corepack pnpm --filter @opspulse/backend dev",
+    "build": "corepack pnpm -r --if-present build",
+    "lint": "corepack pnpm -r --if-present lint",
+    "typecheck": "corepack pnpm -r --if-present typecheck"
+  },
+  "packageManager": "pnpm@12.21.0"
+}

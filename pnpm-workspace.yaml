@@ -1,0 +1,13 @@
+packages:
+  - frontend
+  - backend
+
+allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
+minimumReleaseAgeExclude:
+  - '@hookform/resolvers@7.0.8'
+
+overrides:
+  '@prisma/config>effect': 3.22.5
