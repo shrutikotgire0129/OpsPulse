@@ -1,6 +1,7 @@
 ﻿import cors from "cors";
 import express, { type Express } from "express";
 import helmet from "helmet";
+import { env } from "./config/env.js";
 import { healthRouter } from "./modules/health/health.routes.js";
 
 const app: Express = express();
@@ -11,7 +12,7 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL ?? "http://localhost:3000",
+    origin: env.FRONTEND_URL,
     credentials: true,
   }),
 );
