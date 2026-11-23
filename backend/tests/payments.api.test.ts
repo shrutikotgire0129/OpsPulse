@@ -52,6 +52,12 @@ function createPaymentTestApp(): Express {
     next();
   });
 
+  // Simulate an authenticated OWNER for isolated router tests.
+  testApp.use((_req, res, next) => {
+    res.locals.organizationRole = "OWNER";
+    next();
+  });
+
   testApp.use("/payments", paymentRouter);
 
   testApp.use(notFoundHandler);
@@ -278,18 +284,18 @@ test("POST /payments/:paymentId/refunds rejects client-supplied provider and sta
   });
 });
 
-test("Production app does not expose the unauthenticated Payments API", async () => {
+test("Production app rejects unauthenticated Payments API requests", async () => {
   await withServer(app, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/v1/payments`);
     const payload = await response.json();
 
-    assert.equal(response.status, 404);
+    assert.equal(response.status, 401);
     assert.equal(payload.success, false);
-    assert.equal(payload.error.code, "ROUTE_NOT_FOUND");
+    assert.equal(payload.error.code, "UNAUTHENTICATED");
   });
 });
 
-test("Production app does not expose the unauthenticated Refund API", async () => {
+test("Production app rejects unauthenticated Refund API requests", async () => {
   await withServer(app, async (baseUrl) => {
     const response = await fetch(
       `${baseUrl}/api/v1/payments/payment_123/refunds`,
@@ -307,8 +313,8 @@ test("Production app does not expose the unauthenticated Refund API", async () =
 
     const payload = await response.json();
 
-    assert.equal(response.status, 404);
+    assert.equal(response.status, 401);
     assert.equal(payload.success, false);
-    assert.equal(payload.error.code, "ROUTE_NOT_FOUND");
+    assert.equal(payload.error.code, "UNAUTHENTICATED");
   });
 });

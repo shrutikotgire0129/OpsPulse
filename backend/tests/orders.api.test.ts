@@ -5,7 +5,10 @@ import express from "express";
 import test from "node:test";
 
 import { app } from "../src/app.js";
-import { errorHandler, notFoundHandler } from "../src/middleware/error-handler.js";
+import {
+  errorHandler,
+  notFoundHandler,
+} from "../src/middleware/error-handler.js";
 import { orderRouter } from "../src/modules/orders/order.routes.js";
 
 async function withServer(
@@ -49,6 +52,12 @@ function createOrderTestApp(): Express {
     next();
   });
 
+  // Simulate an authenticated OWNER for isolated router tests.
+  testApp.use((_req, res, next) => {
+    res.locals.organizationRole = "OWNER";
+    next();
+  });
+
   testApp.use("/orders", orderRouter);
 
   testApp.use(notFoundHandler);
@@ -66,10 +75,7 @@ test("GET /orders rejects requests without organization context", async () => {
 
     assert.equal(response.status, 401);
     assert.equal(payload.success, false);
-    assert.equal(
-      payload.error.code,
-      "ORGANIZATION_CONTEXT_REQUIRED",
-    );
+    assert.equal(payload.error.code, "ORGANIZATION_CONTEXT_REQUIRED");
     assert.equal(payload.meta.requestId, "order-api-test");
   });
 });
@@ -83,10 +89,7 @@ test("GET /orders/:orderId rejects requests without organization context", async
 
     assert.equal(response.status, 401);
     assert.equal(payload.success, false);
-    assert.equal(
-      payload.error.code,
-      "ORGANIZATION_CONTEXT_REQUIRED",
-    );
+    assert.equal(payload.error.code, "ORGANIZATION_CONTEXT_REQUIRED");
   });
 });
 
@@ -113,10 +116,7 @@ test("POST /orders rejects requests without organization context", async () => {
 
     assert.equal(response.status, 401);
     assert.equal(payload.success, false);
-    assert.equal(
-      payload.error.code,
-      "ORGANIZATION_CONTEXT_REQUIRED",
-    );
+    assert.equal(payload.error.code, "ORGANIZATION_CONTEXT_REQUIRED");
   });
 });
 
@@ -139,9 +139,7 @@ test("GET /orders/:orderId rejects order IDs longer than 30 characters", async (
   const invalidOrderId = "a".repeat(31);
 
   await withServer(testApp, async (baseUrl) => {
-    const response = await fetch(
-      `${baseUrl}/orders/${invalidOrderId}`,
-    );
+    const response = await fetch(`${baseUrl}/orders/${invalidOrderId}`);
 
     const payload = await response.json();
 
@@ -179,13 +177,13 @@ test("POST /orders rejects client-supplied organization IDs", async () => {
   });
 });
 
-test("Production app does not expose the unauthenticated Orders API", async () => {
+test("Production app rejects unauthenticated Orders API requests", async () => {
   await withServer(app, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/v1/orders`);
     const payload = await response.json();
 
-    assert.equal(response.status, 404);
+    assert.equal(response.status, 401);
     assert.equal(payload.success, false);
-    assert.equal(payload.error.code, "ROUTE_NOT_FOUND");
+    assert.equal(payload.error.code, "UNAUTHENTICATED");
   });
 });

@@ -1,5 +1,6 @@
 import { Router, type Router as ExpressRouter } from "express";
 
+import { authorize } from "../../middleware/authorization.js";
 import {
   validateBody,
   validateParams,
@@ -24,38 +25,38 @@ import {
 
 const paymentRouter: ExpressRouter = Router();
 
-// List payments
 paymentRouter.get(
   "/",
+  authorize("payments:read"),
   validateQuery(listPaymentsQuerySchema),
   listPaymentsController,
 );
 
-// Create a pending payment
 paymentRouter.post(
   "/",
+  authorize("payments:manage"),
   validateBody(createPaymentSchema),
   createPaymentController,
 );
 
-// Create a refund request for a payment
 paymentRouter.post(
   "/:paymentId/refunds",
+  authorize("refunds:create"),
   validateParams(paymentIdParamsSchema),
   validateBody(createRefundSchema),
   createRefundController,
 );
 
-// Retrieve a specific refund
 paymentRouter.get(
   "/:paymentId/refunds/:refundId",
+  authorize("refunds:read"),
   validateParams(refundParamsSchema),
   getRefundController,
 );
 
-// Retrieve a specific payment
 paymentRouter.get(
   "/:paymentId",
+  authorize("payments:read"),
   validateParams(paymentIdParamsSchema),
   getPaymentController,
 );

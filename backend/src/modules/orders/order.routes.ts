@@ -1,5 +1,6 @@
 ﻿import { Router, type Router as ExpressRouter } from "express";
 
+import { authorize } from "../../middleware/authorization.js";
 import {
   validateBody,
   validateParams,
@@ -22,18 +23,21 @@ const orderRouter: ExpressRouter = Router();
 
 orderRouter.get(
   "/",
+  authorize("orders:read"),
   validateQuery(listOrdersQuerySchema),
   listOrdersController,
 );
 
 orderRouter.get(
   "/:orderId",
+  authorize("orders:read"),
   validateParams(orderIdParamsSchema),
   getOrderController,
 );
 
 orderRouter.post(
   "/",
+  authorize("orders:write"),
   validateBody(createOrderSchema),
   createOrderController,
 );

@@ -8,16 +8,17 @@
     "build": "corepack pnpm db:generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "corepack pnpm db:generate && tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test tests/api.test.ts tests/categories.test.ts tests/products.test.ts tests/customers.test.ts tests/orders.test.ts tests/orders.api.test.ts tests/payments.test.ts tests/payments.api.test.ts",
+    "test": "tsx --test tests/api.test.ts tests/categories.test.ts tests/products.test.ts tests/customers.test.ts tests/orders.test.ts tests/orders.api.test.ts tests/payments.test.ts tests/payments.api.test.ts tests/auth.password.test.ts tests/auth.schema.test.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "test:integration": "tsx --test tests/categories.integration.test.ts tests/products.integration.test.ts tests/customers.integration.test.ts tests/orders.integration.test.ts tests/payments.integration.test.ts"
+    "test:integration": "tsx --test tests/categories.integration.test.ts tests/products.integration.test.ts tests/customers.integration.test.ts tests/orders.integration.test.ts tests/payments.integration.test.ts tests/auth.integration.test.ts tests/auth.api.test.ts tests/auth.middleware.integration.test.ts tests/auth.logout.integration.test.ts tests/authorization.api.integration.test.ts tests/organization-context.integration.test.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "argon2": "^0.45.2",
     "cors": "2.8.5",
     "express": "5.3.0",
     "helmet": "8.1.0",
