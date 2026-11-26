@@ -2,7 +2,12 @@ import type { RequestHandler } from "express";
 
 import { env } from "../../config/env.js";
 import { sendSuccess } from "../../lib/http/api-response.js";
-import { logoutUser, loginUser, registerUser } from "./auth.service.js";
+import {
+  getCurrentSession,
+  logoutUser,
+  loginUser,
+  registerUser,
+} from "./auth.service.js";
 import { SESSION_COOKIE_NAME } from "./session.js";
 
 import type { LoginInput, RegisterInput } from "./auth.schema.js";
@@ -42,6 +47,23 @@ export const loginController: RequestHandler = async (req, res) => {
     },
     200,
   );
+};
+
+export const sessionController: RequestHandler = async (_req, res) => {
+  const authenticatedUser = res.locals.authenticatedUser as
+    | AuthenticatedSessionContext
+    | undefined;
+
+  if (!authenticatedUser) {
+    return sendSuccess(res, { user: null }, 200);
+  }
+
+  const result = await getCurrentSession(
+    authenticatedUser.id,
+    authenticatedUser.sessionId,
+  );
+
+  return sendSuccess(res, result, 200);
 };
 
 export const logoutController: RequestHandler = async (_req, res) => {

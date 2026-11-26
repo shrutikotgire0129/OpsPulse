@@ -1,39 +1,39 @@
 {
-  "name": "@opspulse/backend",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "corepack pnpm db:generate && tsx watch src/server.ts",
-    "build": "corepack pnpm db:generate && tsc -p tsconfig.json",
-    "start": "node dist/server.js",
-    "typecheck": "corepack pnpm db:generate && tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test tests/api.test.ts tests/categories.test.ts tests/products.test.ts tests/customers.test.ts tests/orders.test.ts tests/orders.api.test.ts tests/payments.test.ts tests/payments.api.test.ts tests/auth.password.test.ts tests/auth.schema.test.ts",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio",
-    "test:integration": "tsx --test tests/categories.integration.test.ts tests/products.integration.test.ts tests/customers.integration.test.ts tests/orders.integration.test.ts tests/payments.integration.test.ts tests/auth.integration.test.ts tests/auth.api.test.ts tests/auth.middleware.integration.test.ts tests/auth.logout.integration.test.ts tests/authorization.api.integration.test.ts tests/organization-context.integration.test.ts"
-  },
-  "dependencies": {
-    "@prisma/adapter-pg": "7.10.1",
-    "@prisma/client": "7.10.1",
-    "argon2": "^0.45.2",
-    "cors": "2.8.5",
-    "express": "5.3.0",
-    "helmet": "8.1.0",
-    "pg": "8.16.3",
-    "socket.io": "4.8.4",
-    "zod": "4.6.7"
-  },
-  "devDependencies": {
-    "@types/cors": "2.8.19",
-    "@types/express": "5.0.3",
-    "@types/node": "24.10.0",
-    "@types/pg": "8.15.5",
-    "dotenv": "^18.0.10",
-    "prisma": "7.10.1",
-    "tsx": "4.20.6",
-    "typescript": "5.9.3"
-  }
+    "name":  "@opspulse/backend",
+    "version":  "1.0.0",
+    "private":  true,
+    "type":  "module",
+    "scripts":  {
+                    "dev":  "corepack pnpm db:generate \u0026\u0026 tsx watch src/server.ts",
+                    "build":  "corepack pnpm db:generate \u0026\u0026 tsc -p tsconfig.json",
+                    "start":  "node dist/server.js",
+                    "typecheck":  "corepack pnpm db:generate \u0026\u0026 tsc --noEmit -p tsconfig.json",
+                    "test":  "tsx --test tests/api.test.ts tests/categories.test.ts tests/products.test.ts tests/customers.test.ts tests/orders.test.ts tests/orders.api.test.ts tests/payments.test.ts tests/payments.api.test.ts tests/auth.password.test.ts tests/auth.schema.test.ts tests/analytics.schema.test.ts tests/analytics.dates.test.ts",
+                    "db:generate":  "prisma generate",
+                    "db:migrate":  "prisma migrate dev",
+                    "db:deploy":  "prisma migrate deploy",
+                    "db:studio":  "prisma studio",
+                    "test:integration":  "tsx --test tests/categories.integration.test.ts tests/products.integration.test.ts tests/customers.integration.test.ts tests/orders.integration.test.ts tests/payments.integration.test.ts tests/auth.integration.test.ts tests/auth.api.test.ts tests/auth.middleware.integration.test.ts tests/auth.logout.integration.test.ts tests/authorization.api.integration.test.ts tests/organization-context.integration.test.ts tests/analytics.schema.test.ts tests/analytics.dates.test.ts tests/analytics.integration.test.ts tests/analytics.api.integration.test.ts"
+                },
+    "dependencies":  {
+                         "@prisma/adapter-pg":  "7.10.1",
+                         "@prisma/client":  "7.10.1",
+                         "argon2":  "^0.45.2",
+                         "cors":  "2.8.5",
+                         "express":  "5.3.0",
+                         "helmet":  "8.1.0",
+                         "pg":  "8.16.3",
+                         "socket.io":  "4.8.4",
+                         "zod":  "4.6.7"
+                     },
+    "devDependencies":  {
+                            "@types/cors":  "2.8.19",
+                            "@types/express":  "5.0.3",
+                            "@types/node":  "24.10.0",
+                            "@types/pg":  "8.15.5",
+                            "dotenv":  "^18.0.10",
+                            "prisma":  "7.10.1",
+                            "tsx":  "4.20.6",
+                            "typescript":  "5.9.3"
+                        }
 }

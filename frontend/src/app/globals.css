@@ -8,21 +8,21 @@
 :root {
   color-scheme: light;
 
-  --background: #f7f8fa;
-  --foreground: #172033;
+  --background: #F8F7FA;
+  --foreground: #272333;
 
-  --surface: #ffffff;
-  --surface-muted: #f9fafb;
+  --surface: #FFFFFF;
+  --surface-muted: #F3F0F8;
 
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-subtle: #eff6ff;
+  --primary: #7955C8;
+  --primary-hover: #6247AA;
+  --primary-subtle: #F1ECFA;
 
-  --secondary: #64748b;
-  --muted: #94a3b8;
+  --secondary: #7251B5;
+  --muted: #948BA3;
 
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
+  --border: #E8E3EF;
+  --border-strong: #D8CDE8;
 
   --success: #16a34a;
   --success-subtle: #f0fdf4;
@@ -115,8 +115,8 @@ a {
 }
 
 ::selection {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #D8C7F0;
+  color: #6247AA;
 }
 
 /* --------------------------------------------------

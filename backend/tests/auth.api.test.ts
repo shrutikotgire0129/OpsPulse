@@ -58,6 +58,7 @@ test("Authentication registration HTTP API", async (t) => {
 
   const userIds: string[] = [];
   const organizationIds: string[] = [];
+  let sessionCookie: string | null = null;
 
   try {
     await withServer(app, async (baseUrl) => {
@@ -128,6 +129,19 @@ test("Authentication registration HTTP API", async (t) => {
       });
 
       await t.test(
+        "rejects unauthenticated session requests with HTTP 401",
+        async () => {
+          const response = await fetch(`${baseUrl}/api/v1/auth/session`);
+
+          const payload = await response.json();
+
+          assert.equal(response.status, 401);
+          assert.equal(payload.success, false);
+          assert.ok(payload.error.code);
+        },
+      );
+
+      await t.test(
         "logs in through the HTTP API and sets a secure session cookie",
         async () => {
           const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
@@ -143,6 +157,9 @@ test("Authentication registration HTTP API", async (t) => {
 
           const payload = await response.json();
           const setCookie = response.headers.get("set-cookie");
+          assert.ok(setCookie);
+          sessionCookie = setCookie.split(";")[0] ?? null;
+          assert.ok(sessionCookie);
 
           assert.equal(response.status, 200);
           assert.equal(payload.success, true);
@@ -276,6 +293,40 @@ test("Authentication registration HTTP API", async (t) => {
         assert.equal(payload.error.code, "EMAIL_ALREADY_EXISTS");
         assert.ok(payload.meta.requestId);
       });
+      await t.test(
+        "returns the authenticated user and organizations from the session cookie",
+        async () => {
+          assert.ok(sessionCookie, "Login must provide a session cookie.");
+
+          const response = await fetch(`${baseUrl}/api/v1/auth/session`, {
+            headers: {
+              Cookie: sessionCookie,
+            },
+          });
+
+          const payload = await response.json();
+
+          assert.equal(response.status, 200);
+          assert.equal(payload.success, true);
+
+          assert.equal(payload.data.user.email, email);
+          assert.equal(payload.data.user.name, "API Integration User");
+
+          assert.equal(payload.data.organizations.length, 1);
+          assert.equal(payload.data.organizations[0].name, organizationName);
+          assert.equal(payload.data.organizations[0].role, "OWNER");
+
+          assert.ok(payload.data.expiresAt);
+
+          assert.equal(
+            Object.hasOwn(payload.data, "sessionToken"),
+            false,
+            "The session token must never be exposed in the response.",
+          );
+
+          assert.equal(JSON.stringify(payload).includes("passwordHash"), false);
+        },
+      );
     });
   } finally {
     // Delete only records created by this test run.

@@ -1,19 +1,56 @@
-﻿import {
+﻿"use client";
+
+import {
   ChevronDown,
   CircleHelp,
   LifeBuoy,
-  Settings,
+  LogOut,
   X,
   Zap,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { navigation } from "@/lib/dashboard-data";
+import { useAuth } from "@/lib/auth-context";
 
 interface AppSidebarProps {
   mobileOpen: boolean;
   onClose: () => void;
 }
 
+function getInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
+
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const router = useRouter();
+
+  const {
+    user,
+    organizations,
+    selectedOrganization,
+    selectOrganization,
+    logout,
+  } = useAuth();
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch {
+      // The auth context clears the local session even if the
+      // logout request fails. Redirect regardless.
+    } finally {
+      onNavigate?.();
+      router.replace("/login");
+    }
+  }
+
+  const initials = user ? getInitials(user.name) : "U";
+
   return (
     <>
       <div className="flex h-[72px] shrink-0 items-center gap-3 border-b border-border px-6">
@@ -31,21 +68,42 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <div className="shrink-0 border-b border-border p-4">
-        <button
-          type="button"
-          className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-slate-50"
-        >
-          <div className="flex size-9 items-center justify-center rounded-lg bg-blue-50 text-sm font-bold text-blue-700">
-            AC
+        <div className="relative flex w-full items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-[#F8F7FA]">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#F1ECFA] text-sm font-bold text-[#7955C8]">
+            {selectedOrganization
+              ? getInitials(selectedOrganization.name)
+              : "—"}
           </div>
+
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-800">
-              Acme Commerce
+            <label htmlFor="organization-selector" className="sr-only">
+              Select organization
+            </label>
+            <select
+              id="organization-selector"
+              value={selectedOrganization?.id ?? ""}
+              disabled={organizations.length <= 1}
+              onChange={(event) => selectOrganization(event.target.value)}
+              className="w-full min-w-0 appearance-none truncate bg-transparent pr-5 text-sm font-semibold text-slate-800 outline-none disabled:cursor-default"
+            >
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500">
+              {selectedOrganization?.role ?? "No organization"}
             </p>
-            <p className="text-xs text-slate-500">Business workspace</p>
           </div>
-          <ChevronDown size={15} className="text-slate-400" />
-        </button>
+
+          {organizations.length > 1 && (
+            <ChevronDown
+              size={15}
+              className="pointer-events-none absolute right-3 text-slate-400"
+            />
+          )}
+        </div>
       </div>
 
       <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
@@ -67,8 +125,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                     onClick={onNavigate}
                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors ${
                       item.active
-                        ? "bg-blue-50 text-blue-700"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                        ? "bg-[#F1ECFA] text-[#7955C8]"
+                        : "text-slate-500 hover:bg-[#F8F7FA] hover:text-[#6247AA]"
                     }`}
                   >
                     <Icon size={17} strokeWidth={1.8} />
@@ -92,7 +150,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <a
             href="#help"
             onClick={onNavigate}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-slate-500 hover:bg-slate-50"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-slate-500 hover:bg-[#F8F7FA]"
           >
             <CircleHelp size={17} />
             Help center
@@ -101,7 +159,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <a
             href="#support"
             onClick={onNavigate}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-slate-500 hover:bg-slate-50"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-slate-500 hover:bg-[#F8F7FA]"
           >
             <LifeBuoy size={17} />
             Support
@@ -109,18 +167,28 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
 
         <div className="mt-3 flex items-center gap-3 border-t border-border px-2 pt-4">
-          <div className="flex size-9 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-700">
-            SK
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-700">
+            {initials}
           </div>
+
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-slate-800">
-              Workspace Admin
+              {user?.name ?? "User"}
             </p>
             <p className="truncate text-[11px] text-slate-400">
-              admin@acme.com
+              {user?.email ?? ""}
             </p>
           </div>
-          <Settings size={16} className="text-slate-400" />
+
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            aria-label="Log out"
+            title="Log out"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </div>
     </>

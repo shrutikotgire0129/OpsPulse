@@ -16,7 +16,7 @@ export function RecentOrders() {
 
         <a
           href="#orders"
-          className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+          className="flex items-center gap-1 text-xs font-semibold text-[#7955C8] hover:text-[#6247AA]"
         >
           View all <ArrowRight size={14} />
         </a>

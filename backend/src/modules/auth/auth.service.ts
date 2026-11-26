@@ -252,6 +252,71 @@ export async function loginUser(input: LoginInput) {
   };
 }
 
+export async function getCurrentSession(userId: string, sessionId: string) {
+  const session = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      userId,
+      revokedAt: null,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+    select: {
+      expiresAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          memberships: {
+            where: {
+              organization: {
+                status: "ACTIVE",
+              },
+            },
+            select: {
+              role: true,
+              organization: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  currencyCode: true,
+                  timezone: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!session) {
+    throw new ApiError(401, "UNAUTHENTICATED", "Authentication is required.");
+  }
+
+  const organizations = session.user.memberships.map((membership) => ({
+    id: membership.organization.id,
+    name: membership.organization.name,
+    slug: membership.organization.slug,
+    currencyCode: membership.organization.currencyCode,
+    timezone: membership.organization.timezone,
+    role: membership.role,
+  }));
+
+  return {
+    user: {
+      id: session.user.id,
+      name: session.user.name,
+      email: session.user.email,
+    },
+    organizations,
+    expiresAt: session.expiresAt,
+  };
+}
+
 export async function logoutUser(
   userId: string,
   sessionId: string,

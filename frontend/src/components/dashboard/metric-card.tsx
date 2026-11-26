@@ -1,20 +1,27 @@
-﻿import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { metrics } from "@/lib/dashboard-data";
+﻿import type { LucideIcon } from "lucide-react";
 
-type Metric = (typeof metrics)[number];
+interface MetricCardProps {
+  title: string;
+  value: string;
+  description: string;
+  icon: LucideIcon;
+  color: string;
+}
 
-export function MetricCard({ metric }: { metric: Metric }) {
-  const Icon = metric.icon;
-  const TrendIcon = metric.positive ? ArrowUpRight : ArrowDownRight;
-
+export function MetricCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+  color,
+}: MetricCardProps) {
   return (
     <article className="rounded-xl border border-border bg-white p-5 shadow-sm shadow-slate-100/70">
       <div className="flex items-start justify-between">
-        <p className="text-[13px] font-medium text-slate-500">
-          {metric.title}
-        </p>
+        <p className="text-[13px] font-medium text-slate-500">{title}</p>
+
         <div
-          className={`flex size-9 items-center justify-center rounded-lg ${metric.color}`}
+          className={`flex size-9 items-center justify-center rounded-lg ${color}`}
         >
           <Icon size={18} />
         </div>
@@ -22,21 +29,11 @@ export function MetricCard({ metric }: { metric: Metric }) {
 
       <div className="mt-4">
         <p className="text-[25px] font-bold tracking-tight text-slate-900">
-          {metric.value}
+          {value}
         </p>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span
-          className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
-            metric.positive ? "text-emerald-600" : "text-red-600"
-          }`}
-        >
-          <TrendIcon size={14} />
-          {metric.change}
-        </span>
-        <span className="text-xs text-slate-400">{metric.description}</span>
-      </div>
+      <p className="mt-3 text-xs text-slate-400">{description}</p>
     </article>
   );
 }

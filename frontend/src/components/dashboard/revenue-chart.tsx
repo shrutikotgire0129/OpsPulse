@@ -15,7 +15,7 @@ export function RevenueChart() {
 
         <div className="flex items-center gap-4 text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-blue-600" />
+            <span className="size-2 rounded-full bg-[#7955C8]" />
             This year
           </span>
           <span className="flex items-center gap-1.5">
@@ -55,7 +55,7 @@ export function RevenueChart() {
                   title={`${item.month}: last year`}
                 />
                 <div
-                  className="w-[38%] rounded-t-[3px] bg-blue-600 transition-colors hover:bg-blue-700"
+                  className="w-[38%] rounded-t-[3px] bg-[#7955C8] transition-colors hover:bg-[#6247AA]"
                   style={{ height: `${item.current}%` }}
                   title={`${item.month}: this year`}
                 />

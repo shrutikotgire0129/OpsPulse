@@ -1,13 +1,29 @@
-﻿import { Bell, Menu, Search } from "lucide-react";
+﻿"use client";
+
+import { Bell, Menu, Search } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 interface AppHeaderProps {
   onMenuClick: () => void;
 }
 
+function getInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
+
 export function AppHeader({ onMenuClick }: AppHeaderProps) {
+  const { user, selectedOrganization } = useAuth();
+
+  const initials = user ? getInitials(user.name) : "U";
+
   return (
     <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-border bg-white/95 px-5 backdrop-blur-md sm:px-8">
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
           aria-label="Open navigation menu"
@@ -18,10 +34,16 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           <Menu size={18} />
         </button>
 
-        <div className="hidden text-sm text-slate-400 sm:block">
-          Workspace <span className="mx-2">/</span>
+        <div className="hidden min-w-0 text-sm text-slate-400 sm:block">
+          <span className="truncate">
+            {selectedOrganization?.name ?? "Workspace"}
+          </span>
+          <span className="mx-2">/</span>
         </div>
-        <span className="text-sm font-semibold text-slate-800">Dashboard</span>
+
+        <span className="shrink-0 text-sm font-semibold text-slate-800">
+          Dashboard
+        </span>
       </div>
 
       <div className="flex items-center gap-3">
@@ -42,8 +64,12 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           <span className="absolute right-2 top-2 size-1.5 rounded-full bg-red-500" />
         </button>
 
-        <div className="flex size-9 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
-          SK
+        <div
+          title={user?.name ?? "User"}
+          aria-label={`Signed in as ${user?.name ?? "User"}`}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#F1ECFA] text-xs font-bold text-[#7955C8]"
+        >
+          {initials}
         </div>
       </div>
     </header>

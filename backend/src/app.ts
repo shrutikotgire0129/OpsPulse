@@ -1,4 +1,4 @@
-﻿import cors from "cors";
+import cors from "cors";
 import express, { type Express } from "express";
 import helmet from "helmet";
 
@@ -11,6 +11,7 @@ import {
   requestLogger,
 } from "./middleware/request-context.js";
 
+import { analyticsRouter } from "./modules/analytics/analytics.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { categoryRouter } from "./modules/categories/category.routes.js";
 import { customerRouter } from "./modules/customers/customer.routes.js";
@@ -57,6 +58,8 @@ app.use("/api/v1/customers", ...businessApiMiddleware, customerRouter);
 app.use("/api/v1/orders", ...businessApiMiddleware, orderRouter);
 
 app.use("/api/v1/payments", ...businessApiMiddleware, paymentRouter);
+
+app.use("/api/v1/analytics", ...businessApiMiddleware, analyticsRouter);
 
 // 404 and centralized error handling must remain last
 app.use(notFoundHandler);

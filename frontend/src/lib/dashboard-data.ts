@@ -53,7 +53,7 @@ export const metrics = [
     description: "vs. previous month",
     icon: Wallet,
     positive: true,
-    color: "bg-blue-50 text-blue-600",
+    color: "bg-[#F1ECFA] text-[#7955C8]",
   },
   {
     title: "Total Orders",
@@ -112,7 +112,7 @@ export const channels = [
     name: "Online Store",
     percentage: 58,
     amount: "$28,010",
-    color: "bg-blue-600",
+    color: "bg-[#7955C8]",
   },
   {
     name: "Marketplace",
@@ -147,7 +147,7 @@ export const orders = [
     date: "Nov 21, 2026",
     amount: "$125.50",
     status: "Processing",
-    statusStyle: "bg-blue-50 text-blue-700",
+    statusStyle: "bg-[#F1ECFA] text-[#7955C8]",
   },
   {
     id: "#ORD-7289",
