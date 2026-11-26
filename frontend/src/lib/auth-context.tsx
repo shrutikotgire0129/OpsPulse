@@ -97,10 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshSession = useCallback(async () => {
+    setError(null);
+    setStatus("loading");
+
     try {
       const session = await apiRequest<AuthSession>("/api/v1/auth/session");
-
-      setError(null);
       applySession(session);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) {
