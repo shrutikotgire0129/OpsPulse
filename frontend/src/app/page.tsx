@@ -18,6 +18,7 @@ import {
 } from "@/hooks/use-dashboard-analytics";
 import { useAuth } from "@/lib/auth-context";
 import { SalesChannels } from "@/components/dashboard/sales-channels";
+import { RevenueChart } from "@/components/dashboard/revenue-chart";
 
 const ranges: { label: string; value: DashboardRange }[] = [
   { label: "Last 7 days", value: "7d" },
@@ -303,6 +304,10 @@ export default function Home() {
               </div>
             )}
           </section>
+        )}
+
+        {analytics.status === "success" && (
+          <RevenueChart revenueTrend={analytics.data.revenueTrend} />
         )}
 
         {analytics.status === "success" && (

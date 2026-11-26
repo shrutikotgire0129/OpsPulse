@@ -18,6 +18,15 @@ export interface DashboardAnalytics {
     refunds: string;
     netRevenue: string;
   }[];
+  revenueTrend: {
+    currencyCode: string;
+    points: {
+      date: string;
+      grossRevenue: string;
+      refunds: string;
+      netRevenue: string;
+    }[];
+  }[];
   ordersByCurrency: {
     currencyCode: string;
     orderCount: number;
