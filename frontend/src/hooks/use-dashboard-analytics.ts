@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiRequest } from "@/lib/api";
 
 export type DashboardRange = "7d" | "30d" | "90d" | "12m";
@@ -50,25 +50,32 @@ interface AnalyticsError {
 }
 
 type AnalyticsState =
-  | {
-      status: "loading";
-    }
-  | {
-      status: "success";
-      data: DashboardAnalytics;
-    }
-  | {
-      status: "error";
-      error: AnalyticsError;
-    };
+  | { status: "loading" }
+  | { status: "success"; data: DashboardAnalytics }
+  | { status: "error"; error: AnalyticsError };
 
 export function useDashboardAnalytics(
   organizationId: string | null,
   range: DashboardRange,
+  startDate?: string,
+  endDate?: string,
 ) {
+  const [retryCount, setRetryCount] = useState(0);
+
+  const retry = useCallback(() => {
+    setRetryCount((count) => count + 1);
+  }, []);
+
+  const requestKey = [
+    organizationId ?? "",
+    range,
+    startDate ?? "",
+    endDate ?? "",
+    retryCount,
+  ].join("|");
+
   const [state, setState] = useState<{
-    organizationId: string;
-    range: DashboardRange;
+    requestKey: string;
     result: AnalyticsState;
   } | null>(null);
 
@@ -79,22 +86,25 @@ export function useDashboardAnalytics(
 
     let active = true;
 
+    const params = new URLSearchParams();
+
+    params.set("range", range);
+
+    if (startDate && endDate) {
+      params.set("startDate", startDate);
+      params.set("endDate", endDate);
+    }
+
     apiRequest<DashboardAnalytics>(
-      `/api/v1/analytics/dashboard?range=${range}`,
-      {
-        organizationId,
-      },
+      `/api/v1/analytics/dashboard?${params.toString()}`,
+      { organizationId },
     )
       .then((data) => {
         if (!active) return;
 
         setState({
-          organizationId,
-          range,
-          result: {
-            status: "success",
-            data,
-          },
+          requestKey,
+          result: { status: "success", data },
         });
       })
       .catch((cause: unknown) => {
@@ -117,31 +127,23 @@ export function useDashboardAnalytics(
               };
 
         setState({
-          organizationId,
-          range,
-          result: {
-            status: "error",
-            error,
-          },
+          requestKey,
+          result: { status: "error", error },
         });
       });
 
     return () => {
       active = false;
     };
-  }, [organizationId, range]);
+  }, [organizationId, range, startDate, endDate, requestKey, retryCount]);
 
   if (!organizationId) {
-    return { status: "loading" } as const;
+    return { status: "loading", retry } as const;
   }
 
-  if (
-    !state ||
-    state.organizationId !== organizationId ||
-    state.range !== range
-  ) {
-    return { status: "loading" } as const;
+  if (!state || state.requestKey !== requestKey) {
+    return { status: "loading", retry } as const;
   }
 
-  return state.result;
+  return { ...state.result, retry };
 }

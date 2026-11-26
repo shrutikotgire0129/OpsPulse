@@ -46,7 +46,13 @@ function formatCurrency(amount: string, currencyCode: string): string {
 }
 
 function formatDate(date: string): string {
-  const parsed = new Date(date);
+  const [year, month, day] = date.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return date;
+  }
+
+  const parsed = new Date(year, month - 1, day);
 
   if (Number.isNaN(parsed.getTime())) {
     return date;
@@ -61,13 +67,52 @@ function formatDate(date: string): string {
 
 export default function Home() {
   const { user, selectedOrganization } = useAuth();
+
   const [range, setRange] = useState<DashboardRange>("30d");
   const [isRangeOpen, setIsRangeOpen] = useState(false);
+
+  const [isCustomRange, setIsCustomRange] = useState(false);
+  const [draftStartDate, setDraftStartDate] = useState("");
+  const [draftEndDate, setDraftEndDate] = useState("");
+  const [appliedStartDate, setAppliedStartDate] = useState<
+    string | undefined
+  >();
+  const [appliedEndDate, setAppliedEndDate] = useState<string | undefined>();
 
   const analytics = useDashboardAnalytics(
     selectedOrganization?.id ?? null,
     range,
+    appliedStartDate,
+    appliedEndDate,
   );
+
+  const datesAreValid =
+    draftStartDate !== "" &&
+    draftEndDate !== "" &&
+    draftStartDate <= draftEndDate;
+
+  const hasDateOrderError =
+    draftStartDate !== "" &&
+    draftEndDate !== "" &&
+    draftStartDate > draftEndDate;
+
+  function selectPresetRange(value: DashboardRange) {
+    setRange(value);
+    setIsCustomRange(false);
+    setAppliedStartDate(undefined);
+    setAppliedEndDate(undefined);
+    setIsRangeOpen(false);
+  }
+
+  function applyCustomRange() {
+    if (!datesAreValid) {
+      return;
+    }
+
+    setAppliedStartDate(draftStartDate);
+    setAppliedEndDate(draftEndDate);
+    setIsCustomRange(true);
+  }
 
   const revenueDescription =
     analytics.status === "success" &&
@@ -100,7 +145,9 @@ export default function Home() {
       ? `${formatDate(analytics.data.period.startDate)} – ${formatDate(
           analytics.data.period.endDate,
         )}`
-      : (ranges.find((item) => item.value === range)?.label ?? "");
+      : isCustomRange && appliedStartDate && appliedEndDate
+        ? `${formatDate(appliedStartDate)} – ${formatDate(appliedEndDate)}`
+        : (ranges.find((item) => item.value === range)?.label ?? "");
 
   return (
     <AppShell>
@@ -153,9 +200,11 @@ export default function Home() {
                   aria-haspopup="listbox"
                   aria-expanded={isRangeOpen}
                   onClick={() => setIsRangeOpen((open) => !open)}
-                  className="flex min-w-[140px] items-center justify-between gap-3 rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none transition-colors hover:border-[#7955C8] focus-visible:ring-2 focus-visible:ring-[#7955C8]/20"
+                  className="flex min-w-[150px] items-center justify-between gap-3 rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none transition-colors hover:border-[#7955C8] focus-visible:ring-2 focus-visible:ring-[#7955C8]/20"
                 >
-                  {ranges.find((item) => item.value === range)?.label}
+                  {isCustomRange
+                    ? "Custom range"
+                    : ranges.find((item) => item.value === range)?.label}
                   <ChevronDown
                     size={14}
                     className={`transition-transform ${isRangeOpen ? "rotate-180" : ""}`}
@@ -173,13 +222,10 @@ export default function Home() {
                         key={item.value}
                         type="button"
                         role="option"
-                        aria-selected={range === item.value}
-                        onClick={() => {
-                          setRange(item.value);
-                          setIsRangeOpen(false);
-                        }}
+                        aria-selected={!isCustomRange && range === item.value}
+                        onClick={() => selectPresetRange(item.value)}
                         className={`w-full rounded-md px-3 py-2 text-left text-xs transition-colors hover:bg-[#F1ECFA] hover:text-[#7955C8] ${
-                          range === item.value
+                          !isCustomRange && range === item.value
                             ? "font-semibold text-[#7955C8]"
                             : "font-medium text-slate-700"
                         }`}
@@ -187,11 +233,101 @@ export default function Home() {
                         {item.label}
                       </button>
                     ))}
+
+                    <div className="my-1 border-t border-border" />
+
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isCustomRange}
+                      onClick={() => {
+                        setIsCustomRange(true);
+                        setIsRangeOpen(false);
+                      }}
+                      className={`w-full rounded-md px-3 py-2 text-left text-xs transition-colors hover:bg-[#F1ECFA] hover:text-[#7955C8] ${
+                        isCustomRange
+                          ? "font-semibold text-[#7955C8]"
+                          : "font-medium text-slate-700"
+                      }`}
+                    >
+                      Custom range
+                    </button>
                   </div>
                 )}
               </div>
             </div>
           </div>
+
+          {isCustomRange && (
+            <div className="mb-4 rounded-xl border border-border bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="min-w-[180px] flex-1">
+                  <label
+                    htmlFor="analytics-start-date"
+                    className="mb-2 block text-xs font-medium text-slate-600"
+                  >
+                    Start date
+                  </label>
+                  <input
+                    id="analytics-start-date"
+                    type="date"
+                    value={draftStartDate}
+                    max={draftEndDate || undefined}
+                    onChange={(event) => setDraftStartDate(event.target.value)}
+                    className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#7955C8] focus:ring-2 focus:ring-[#7955C8]/20"
+                  />
+                </div>
+
+                <div className="min-w-[180px] flex-1">
+                  <label
+                    htmlFor="analytics-end-date"
+                    className="mb-2 block text-xs font-medium text-slate-600"
+                  >
+                    End date
+                  </label>
+                  <input
+                    id="analytics-end-date"
+                    type="date"
+                    value={draftEndDate}
+                    min={draftStartDate || undefined}
+                    onChange={(event) => setDraftEndDate(event.target.value)}
+                    className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#7955C8] focus:ring-2 focus:ring-[#7955C8]/20"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={applyCustomRange}
+                  disabled={!datesAreValid}
+                  className="rounded-lg bg-[#7955C8] px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#6845B5] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Apply range
+                </button>
+              </div>
+
+              {hasDateOrderError && (
+                <p className="mt-3 text-xs text-red-600" role="alert">
+                  Start date must not be after the end date.
+                </p>
+              )}
+
+              {!draftStartDate || !draftEndDate ? (
+                <p className="mt-3 text-xs text-slate-400">
+                  Select both dates to apply a custom reporting period.
+                </p>
+              ) : null}
+
+              {appliedStartDate &&
+                appliedEndDate &&
+                (draftStartDate !== appliedStartDate ||
+                  draftEndDate !== appliedEndDate) && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    You have changed the dates. Apply the range to refresh
+                    analytics.
+                  </p>
+                )}
+            </div>
+          )}
 
           {analytics.status === "loading" && (
             <div
@@ -219,6 +355,13 @@ export default function Home() {
                   ? "Your organization role does not have permission to view analytics. Contact an organization administrator."
                   : analytics.error.message}
               </p>
+              <button
+                type="button"
+                onClick={analytics.retry}
+                className="mt-4 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+              >
+                Retry
+              </button>
             </div>
           )}
 
