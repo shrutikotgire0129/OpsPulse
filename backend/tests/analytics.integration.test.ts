@@ -168,6 +168,7 @@ test("Analytics service PostgreSQL integration", async (t) => {
       "aggregates captured revenue and successful refunds by currency",
       async () => {
         const insidePeriod = new Date("2026-11-15T12:00:00.000Z");
+        const refundDate = new Date("2026-11-16T12:00:00.000Z");
 
         // INR captured payments: 100 + 50 + 25 = 175.
         const successfulInr = await createPaymentFixture(
@@ -235,7 +236,7 @@ test("Analytics service PostgreSQL integration", async (t) => {
           successfulInr.id,
           "10.0000",
           "SUCCEEDED",
-          insidePeriod,
+          refundDate,
         );
 
         await createRefundFixture(
@@ -243,7 +244,7 @@ test("Analytics service PostgreSQL integration", async (t) => {
           partiallyRefundedInr.id,
           "15.0000",
           "SUCCEEDED",
-          insidePeriod,
+          refundDate,
         );
 
         await createRefundFixture(
@@ -251,7 +252,7 @@ test("Analytics service PostgreSQL integration", async (t) => {
           refundedInr.id,
           "25.0000",
           "SUCCEEDED",
-          insidePeriod,
+          refundDate,
         );
 
         await createRefundFixture(
@@ -259,7 +260,7 @@ test("Analytics service PostgreSQL integration", async (t) => {
           successfulEur.id,
           "5.0000",
           "SUCCEEDED",
-          insidePeriod,
+          refundDate,
         );
 
         // Pending refunds must not be counted.
@@ -328,6 +329,76 @@ test("Analytics service PostgreSQL integration", async (t) => {
             netRevenue: "125.0000",
           },
         ]);
+        // A custom 30-day reporting period uses daily buckets.
+        assert.equal(result.revenueTrend.length, 2);
+
+        const eurTrend = result.revenueTrend.find(
+          (series) => series.currencyCode === "EUR",
+        );
+
+        const inrTrend = result.revenueTrend.find(
+          (series) => series.currencyCode === "INR",
+        );
+
+        assert.ok(eurTrend);
+        assert.ok(inrTrend);
+
+        assert.equal(eurTrend.points.length, 30);
+        assert.equal(inrTrend.points.length, 30);
+
+        // Payments are attributed to their payment date.
+        assert.deepEqual(
+          inrTrend.points.find((point) => point.date === "2026-11-15"),
+          {
+            date: "2026-11-15",
+            grossRevenue: "175.0000",
+            refunds: "0.0000",
+            netRevenue: "175.0000",
+          },
+        );
+
+        // Refunds are attributed to their processing date.
+        assert.deepEqual(
+          inrTrend.points.find((point) => point.date === "2026-11-16"),
+          {
+            date: "2026-11-16",
+            grossRevenue: "0.0000",
+            refunds: "50.0000",
+            netRevenue: "-50.0000",
+          },
+        );
+
+        // Empty dates must still exist as zero-value buckets.
+        assert.deepEqual(
+          inrTrend.points.find((point) => point.date === "2026-11-17"),
+          {
+            date: "2026-11-17",
+            grossRevenue: "0.0000",
+            refunds: "0.0000",
+            netRevenue: "0.0000",
+          },
+        );
+
+        // EUR must remain a separate currency series.
+        assert.deepEqual(
+          eurTrend.points.find((point) => point.date === "2026-11-15"),
+          {
+            date: "2026-11-15",
+            grossRevenue: "20.0000",
+            refunds: "0.0000",
+            netRevenue: "20.0000",
+          },
+        );
+
+        assert.deepEqual(
+          eurTrend.points.find((point) => point.date === "2026-11-16"),
+          {
+            date: "2026-11-16",
+            grossRevenue: "0.0000",
+            refunds: "5.0000",
+            netRevenue: "-5.0000",
+          },
+        );
       },
     );
 

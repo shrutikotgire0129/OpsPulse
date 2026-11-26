@@ -58,11 +58,32 @@ export interface SalesChannelAnalytics {
 }
 
 /**
+ * Revenue values for one reporting date or month.
+ * Monetary values are serialized as decimal strings.
+ */
+export interface RevenueTrendPoint {
+  date: string;
+  grossRevenue: string;
+  refunds: string;
+  netRevenue: string;
+}
+
+/**
+ * Revenue trend for one currency.
+ * Different currencies must never share a series.
+ */
+export interface CurrencyRevenueTrend {
+  currencyCode: string;
+  points: RevenueTrendPoint[];
+}
+
+/**
  * Complete dashboard analytics response.
  */
 export interface DashboardAnalytics {
   period: ReportingPeriod;
   revenueByCurrency: CurrencyRevenue[];
+  revenueTrend: CurrencyRevenueTrend[];
   ordersByCurrency: CurrencyOrderAnalytics[];
   totalOrders: number;
   newCustomers: number;

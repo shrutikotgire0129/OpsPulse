@@ -7,6 +7,7 @@ import { resolveReportingPeriod } from "./analytics.dates.js";
 
 import type {
   AnalyticsContext,
+  CurrencyRevenueTrend,
   DashboardAnalytics,
   DashboardQuery,
 } from "./analytics.types.js";
@@ -48,6 +49,179 @@ export async function getRevenueAnalytics(
     organization.timezone,
     organization.currencyCode,
   );
+
+  // --------------------------------------------------
+  // REVENUE TREND
+  // --------------------------------------------------
+
+  const reportingDays =
+    (Date.parse(`${period.endDate}T00:00:00Z`) -
+      Date.parse(`${period.startDate}T00:00:00Z`)) /
+      86_400_000 +
+    1;
+
+  const bucketUnit =
+    query.range === "12m" ||
+    (query.startDate !== undefined && reportingDays > 90)
+      ? "month"
+      : "day";
+
+  const bucketInterval = bucketUnit === "month" ? "1 month" : "1 day";
+
+  const paymentBucket = Prisma.sql`
+    date_trunc(
+      ${bucketUnit},
+      (p."paidAt" AT TIME ZONE 'UTC') AT TIME ZONE ${period.timezone}
+    )::date
+  `;
+
+  const refundBucket = Prisma.sql`
+    date_trunc(
+      ${bucketUnit},
+      (r."processedAt" AT TIME ZONE 'UTC') AT TIME ZONE ${period.timezone}
+    )::date
+  `;
+
+  const trendGroups = await prisma.$queryRaw<
+    Array<{
+      currencyCode: string;
+      date: string;
+      grossRevenue: string;
+      refunds: string;
+    }>
+  >`
+    WITH buckets AS (
+      SELECT
+        generate_series(
+          date_trunc(
+            ${bucketUnit},
+            ${period.startDate}::date::timestamp
+          ),
+          date_trunc(
+            ${bucketUnit},
+            ${period.endDate}::date::timestamp
+          ),
+          ${bucketInterval}::interval
+        )::date AS "bucketDate"
+    ),
+
+    currencies AS (
+      SELECT p."currencyCode"
+      FROM "Payment" AS p
+      WHERE
+        p."organizationId" = ${context.organizationId}
+        AND p."status" IN (
+          'SUCCEEDED',
+          'PARTIALLY_REFUNDED',
+          'REFUNDED'
+        )
+        AND p."paidAt" >= ${period.startInclusive}
+        AND p."paidAt" < ${period.endExclusive}
+
+      UNION
+
+      SELECT p."currencyCode"
+      FROM "PaymentRefund" AS r
+      INNER JOIN "Payment" AS p
+        ON p."id" = r."paymentId"
+        AND p."organizationId" = r."organizationId"
+      WHERE
+        r."organizationId" = ${context.organizationId}
+        AND p."organizationId" = ${context.organizationId}
+        AND r."status" = 'SUCCEEDED'
+        AND r."processedAt" >= ${period.startInclusive}
+        AND r."processedAt" < ${period.endExclusive}
+    ),
+
+    events AS (
+      SELECT
+        p."currencyCode",
+        ${paymentBucket} AS "bucketDate",
+        SUM(p."amount") AS "grossRevenue",
+        0::numeric AS "refunds"
+      FROM "Payment" AS p
+      WHERE
+        p."organizationId" = ${context.organizationId}
+        AND p."status" IN (
+          'SUCCEEDED',
+          'PARTIALLY_REFUNDED',
+          'REFUNDED'
+        )
+        AND p."paidAt" >= ${period.startInclusive}
+        AND p."paidAt" < ${period.endExclusive}
+      GROUP BY 1, 2
+
+      UNION ALL
+
+      SELECT
+        p."currencyCode",
+        ${refundBucket} AS "bucketDate",
+        0::numeric AS "grossRevenue",
+        SUM(r."amount") AS "refunds"
+      FROM "PaymentRefund" AS r
+      INNER JOIN "Payment" AS p
+        ON p."id" = r."paymentId"
+        AND p."organizationId" = r."organizationId"
+      WHERE
+        r."organizationId" = ${context.organizationId}
+        AND p."organizationId" = ${context.organizationId}
+        AND r."status" = 'SUCCEEDED'
+        AND r."processedAt" >= ${period.startInclusive}
+        AND r."processedAt" < ${period.endExclusive}
+      GROUP BY 1, 2
+    ),
+
+    totals AS (
+      SELECT
+        e."currencyCode",
+        e."bucketDate",
+        SUM(e."grossRevenue") AS "grossRevenue",
+        SUM(e."refunds") AS "refunds"
+      FROM events AS e
+      GROUP BY
+        e."currencyCode",
+        e."bucketDate"
+    )
+
+    SELECT
+      c."currencyCode" AS "currencyCode",
+      TO_CHAR(b."bucketDate", 'YYYY-MM-DD') AS "date",
+      COALESCE(t."grossRevenue", 0)::text AS "grossRevenue",
+      COALESCE(t."refunds", 0)::text AS "refunds"
+    FROM currencies AS c
+    CROSS JOIN buckets AS b
+    LEFT JOIN totals AS t
+      ON t."currencyCode" = c."currencyCode"
+      AND t."bucketDate" = b."bucketDate"
+    ORDER BY
+      c."currencyCode" ASC,
+      b."bucketDate" ASC
+  `;
+
+  const trendByCurrency = new Map<string, CurrencyRevenueTrend["points"]>();
+
+  for (const group of trendGroups) {
+    const grossRevenue = new Prisma.Decimal(group.grossRevenue);
+    const refunds = new Prisma.Decimal(group.refunds);
+
+    const points = trendByCurrency.get(group.currencyCode) ?? [];
+
+    points.push({
+      date: group.date,
+      grossRevenue: grossRevenue.toFixed(4),
+      refunds: refunds.toFixed(4),
+      netRevenue: grossRevenue.minus(refunds).toFixed(4),
+    });
+
+    trendByCurrency.set(group.currencyCode, points);
+  }
+
+  const revenueTrend = Array.from(trendByCurrency.entries())
+    .sort(([currencyA], [currencyB]) => currencyA.localeCompare(currencyB))
+    .map(([currencyCode, points]) => ({
+      currencyCode,
+      points,
+    }));
 
   // --------------------------------------------------
   // REVENUE
@@ -250,6 +424,7 @@ export async function getRevenueAnalytics(
       currencyCode: period.currencyCode,
     },
     revenueByCurrency,
+    revenueTrend,
     ordersByCurrency,
     totalOrders,
     newCustomers,
